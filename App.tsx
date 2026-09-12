@@ -8,7 +8,7 @@ import { RejoinModal } from "./src/components/modals/RejoinModal";
 import { RoundModal } from "./src/components/modals/RoundModal";
 import { SettingsModal } from "./src/components/modals/SettingsModal";
 import { SetupModal } from "./src/components/modals/SetupModal";
-import { getCurrentOpenCardPlayerId, getLegacyOpenCardPlayerId, getNextOpenCardPlayerId, rebuildPlayers } from "./src/domain/game";
+import { getCardDistributorPlayerId, getCurrentOpenCardPlayerId, getLegacyOpenCardPlayerId, getNextOpenCardPlayerId, rebuildPlayers, rejoinPlayerAtScore } from "./src/domain/game";
 import { getRulesError, getRulesFromDraft, getScoreForKind, normalizeRules, toRulesDraft } from "./src/domain/rules";
 import { DraftEntry, Game, Player, Round, RoundEntry, Rules, RulesDraft, SavedPlayer } from "./src/domain/types";
 import { ScoreboardScreen } from "./src/screens/ScoreboardScreen";
@@ -276,7 +276,13 @@ export default function App() {
 
     const round: Round = editingRound
       ? { ...editingRound, entries }
-      : { id: makeId(), number: game.rounds.length + 1, savedAt: new Date().toISOString(), entries };
+      : {
+          id: makeId(),
+          number: game.rounds.length + 1,
+          savedAt: new Date().toISOString(),
+          dealerPlayerId: getCardDistributorPlayerId(game.players, game.openCardPlayerId),
+          entries,
+        };
     const rounds = editingRound
       ? game.rounds.map((existingRound) => existingRound.id === round.id ? round : existingRound)
       : [...game.rounds, round];
@@ -301,8 +307,9 @@ export default function App() {
       return;
     }
 
-    const lastSeat = Math.max(0, ...game.players.map((candidate) => candidate.seat)) + 1;
-    const players = game.players.map((candidate) => candidate.id === playerId ? { ...candidate, total: rejoinScore, eliminated: false, seat: lastSeat } : candidate);
+    const lastRound = game.rounds[game.rounds.length - 1];
+    if (!lastRound) return;
+    const players = rejoinPlayerAtScore(game.players, playerId, rejoinScore, lastRound.id);
     void persist({ ...game, players, status: "active", openCardPlayerId: getCurrentOpenCardPlayerId(players, game.openCardPlayerId) });
     setRejoinVisible(false);
   };

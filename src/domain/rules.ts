@@ -8,20 +8,26 @@ export const toRulesDraft = (rules: Rules): RulesDraft => ({
   middleDropScore: String(rules.middleDropScore),
 });
 
-export const normalizeRules = (rules: Partial<Rules>): Rules => ({ ...DEFAULT_RULES, ...rules });
+const getNumberFromDraft = (value: string) => value.trim() ? Number(value) : Number.NaN;
 
 export const getRulesFromDraft = (draft: RulesDraft): Rules => ({
-  maxScore: Number.parseInt(draft.maxScore, 10),
-  fullScore: Number.parseInt(draft.fullScore, 10),
-  firstDropScore: Number.parseInt(draft.firstDropScore, 10),
-  middleDropScore: Number.parseInt(draft.middleDropScore, 10),
+  maxScore: getNumberFromDraft(draft.maxScore),
+  fullScore: getNumberFromDraft(draft.fullScore),
+  firstDropScore: getNumberFromDraft(draft.firstDropScore),
+  middleDropScore: getNumberFromDraft(draft.middleDropScore),
 });
 
 export const getRulesError = (rules: Rules) => {
-  if (!rules.maxScore || !rules.fullScore || !rules.firstDropScore || !rules.middleDropScore) return "Use positive scores for every setting.";
-  if (rules.fullScore > rules.maxScore) return "Full score cannot exceed the game score.";
+  const scores = [rules.maxScore, rules.fullScore, rules.firstDropScore, rules.middleDropScore];
+  if (!scores.every((score) => Number.isSafeInteger(score) && score > 0)) return "Use positive whole-number scores for every setting.";
+  if (rules.fullScore > rules.maxScore || rules.firstDropScore > rules.maxScore || rules.middleDropScore > rules.maxScore) return "No round score can exceed the game score.";
   if (rules.middleDropScore < rules.firstDropScore) return "Mid score must be at least as high as Drop score.";
   return "";
+};
+
+export const normalizeRules = (rules: Partial<Rules>): Rules => {
+  const normalized = { ...DEFAULT_RULES, ...rules };
+  return getRulesError(normalized) ? DEFAULT_RULES : normalized;
 };
 
 export const scoreLabel = (kind: ScoreKind, rules: Rules) => {
@@ -42,7 +48,7 @@ export const getPresetScore = (kind: Exclude<ScoreKind, "manual">, rules: Rules)
 };
 
 export const getScoreForKind = (entry: DraftEntry, rules: Rules) => (
-  !entry.kind ? Number.NaN : entry.kind === "manual" ? Number.parseInt(entry.score, 10) : getPresetScore(entry.kind, rules)
+  !entry.kind ? Number.NaN : entry.kind === "manual" ? getNumberFromDraft(entry.score) : getPresetScore(entry.kind, rules)
 );
 
 export const roundChoiceLabel = (kind: Exclude<ScoreKind, "manual">) => ({

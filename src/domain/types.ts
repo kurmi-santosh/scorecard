@@ -16,6 +16,10 @@ export type Player = {
   seat: number;
   total: number;
   eliminated: boolean;
+  scoreReset?: {
+    afterRoundId: string;
+    total: number;
+  };
 };
 
 export type SavedPlayer = {
@@ -33,6 +37,7 @@ export type Round = {
   id: string;
   number: number;
   savedAt: string;
+  dealerPlayerId: string | null;
   entries: RoundEntry[];
 };
 

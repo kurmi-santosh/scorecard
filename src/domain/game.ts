@@ -2,14 +2,39 @@ import { Player, Round, Rules } from "./types";
 
 export const rebuildPlayers = (players: Player[], rounds: Round[], rules: Rules) =>
   players.map((player) => {
-    const total = rounds.reduce((sum, round) => {
+    const scoreReset = player.scoreReset;
+    const resetRoundIndex = scoreReset
+      ? rounds.findIndex((round) => round.id === scoreReset.afterRoundId)
+      : -1;
+    const scoreRounds = resetRoundIndex >= 0 ? rounds.slice(resetRoundIndex + 1) : rounds;
+    const startingTotal = resetRoundIndex >= 0 ? scoreReset?.total ?? 0 : 0;
+    const total = scoreRounds.reduce((sum, round) => {
       const entry = round.entries.find((candidate) => candidate.playerId === player.id);
       return sum + (entry?.score ?? 0);
-    }, 0);
+    }, startingTotal);
     return { ...player, total, eliminated: total >= rules.maxScore };
   });
 
+export const rejoinPlayerAtScore = (players: Player[], playerId: string, total: number, afterRoundId: string) => {
+  const player = players.find((candidate) => candidate.id === playerId);
+  if (!player?.eliminated) return players;
+
+  const lastSeat = Math.max(0, ...players.map((candidate) => candidate.seat)) + 1;
+  return players.map((candidate) => candidate.id === playerId
+    ? { ...candidate, total, eliminated: false, seat: lastSeat, scoreReset: { afterRoundId, total } }
+    : candidate);
+};
+
 export const getPlayersInTurnOrder = (players: Player[]) => [...players].sort((a, b) => a.seat - b.seat);
+
+export const getCardDistributorPlayerId = (players: Player[], openCardPlayerId: string | null) => {
+  const activePlayers = getPlayersInTurnOrder(players).filter((player) => !player.eliminated);
+  if (!activePlayers.length) return null;
+
+  const openCardPlayerIndex = activePlayers.findIndex((player) => player.id === openCardPlayerId);
+  const distributorIndex = openCardPlayerIndex < 0 ? activePlayers.length - 1 : (openCardPlayerIndex - 1 + activePlayers.length) % activePlayers.length;
+  return activePlayers[distributorIndex].id;
+};
 
 export const getLegacyOpenCardPlayerId = (players: Player[], rounds: Round[]) => {
   const activePlayers = getPlayersInTurnOrder(players).filter((player) => !player.eliminated);
