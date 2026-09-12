@@ -8,9 +8,10 @@ type Props = {
   rules: Rules;
   isLowestScore: boolean;
   isOpenCardPlayer: boolean;
+  isDistributor: boolean;
 };
 
-export function PlayerCard({ player, rules, isLowestScore, isOpenCardPlayer }: Props) {
+export function PlayerCard({ player, rules, isLowestScore, isOpenCardPlayer, isDistributor }: Props) {
   const progress = Math.min(player.total / rules.maxScore, 1);
   const scoreTone = getScoreTone(player.total, rules, isLowestScore);
   const safePointsRemaining = Math.max(0, rules.maxScore - player.total - 1);
@@ -23,6 +24,7 @@ export function PlayerCard({ player, rules, isLowestScore, isOpenCardPlayer }: P
         <View style={styles.playerNameBlock}>
           <View style={styles.playerNameRow}>
             <Text style={styles.playerName}>{player.name}</Text>
+            {isDistributor && <Text style={styles.distributorStar} accessibilityLabel="Card distributor">★</Text>}
             {isOpenCardPlayer && <View style={styles.openCardCue} accessible accessibilityLabel="Take the open card"><View style={styles.openCardIcon}><Text style={styles.openCardDiamond}>♦</Text></View><Text style={styles.openCardLabel}>Open card</Text></View>}
             {showRemainingStatus && <Text style={[styles.remainingStatus, { color: scoreTone.accent }]}>{remainingDrops} drops · {safePointsRemaining} left</Text>}
           </View>

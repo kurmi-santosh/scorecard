@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, SafeAreaView, Text, View } from "react-native";
+import { Alert, Platform, SafeAreaView, StatusBar as NativeStatusBar, Text, View } from "react-native";
 import { DEFAULT_RULES, DEFAULT_RULES_STORAGE_KEY, makeId, MAX_PLAYERS, PLAYERS_STORAGE_KEY, STORAGE_KEY } from "./src/constants";
 import { PlayerLibraryModal } from "./src/components/modals/PlayerLibraryModal";
 import { RejoinModal } from "./src/components/modals/RejoinModal";
@@ -28,7 +28,7 @@ export default function App() {
   const [historyVisible, setHistoryVisible] = useState(false);
   const [savedPlayers, setSavedPlayers] = useState<SavedPlayer[]>([]);
   const [defaultRules, setDefaultRules] = useState<Rules>(DEFAULT_RULES);
-  const [draftNames, setDraftNames] = useState(["", ""]);
+  const [draftNames, setDraftNames] = useState([""]);
   const [draftRules, setDraftRules] = useState<RulesDraft>(toRulesDraft(DEFAULT_RULES));
   const [settingsDraft, setSettingsDraft] = useState<RulesDraft>(toRulesDraft(DEFAULT_RULES));
   const [setupError, setSetupError] = useState("");
@@ -108,7 +108,7 @@ export default function App() {
   );
 
   const openSetup = () => {
-    setDraftNames(["", ""]);
+    setDraftNames([""]);
     setDraftRules(toRulesDraft(defaultRules));
     setSetupError("");
     setSetupVisible(true);
@@ -130,22 +130,12 @@ export default function App() {
     setDraftNames((names) => names.map((name, position) => (position === index ? value : name)));
   };
 
-  const moveName = (index: number, direction: -1 | 1) => {
-    const target = index + direction;
-    if (target < 0 || target >= draftNames.length) return;
-    setDraftNames((names) => {
-      const next = [...names];
-      [next[index], next[target]] = [next[target], next[index]];
-      return next;
-    });
-  };
-
   const addPlayer = () => {
     if (draftNames.length < MAX_PLAYERS) setDraftNames((names) => [...names, ""]);
   };
 
   const removePlayer = (index: number) => {
-    if (draftNames.length > 2) setDraftNames((names) => names.filter((_, position) => position !== index));
+    if (draftNames.length > 1) setDraftNames((names) => names.filter((_, position) => position !== index));
   };
 
   const addSavedPlayerToGame = (name: string) => {
@@ -193,6 +183,10 @@ export default function App() {
   const startGame = () => {
     const names = draftNames.map((name) => name.trim());
     const rules = getRulesFromDraft(draftRules);
+    if (names.length < 2) {
+      setSetupError("Add at least two players to start a game.");
+      return;
+    }
     if (names.some((name) => !name)) {
       setSetupError("Enter a name for every seat.");
       return;
@@ -319,7 +313,7 @@ export default function App() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, Platform.OS === "android" && { paddingTop: NativeStatusBar.currentHeight ?? 0 }]}>
       <StatusBar style="light" />
       {game && !showHome ? (
         <ScoreboardScreen
@@ -335,7 +329,7 @@ export default function App() {
         />
       ) : <WelcomeScreen hasGame={Boolean(game)} onStart={openSetup} onResume={() => setShowHome(false)} onManagePlayers={openPlayerLibrary} />}
 
-      <SetupModal visible={setupVisible} names={draftNames} rules={draftRules} error={setupError} onClose={() => setSetupVisible(false)} onNameChange={updateName} onMoveName={moveName} onAddPlayer={addPlayer} onRemovePlayer={removePlayer} savedPlayers={savedPlayers} onAddSavedPlayer={addSavedPlayerToGame} onRulesChange={(key, value) => setDraftRules((rules) => ({ ...rules, [key]: value }))} onStart={startGame} />
+      <SetupModal visible={setupVisible} names={draftNames} rules={draftRules} error={setupError} onClose={() => setSetupVisible(false)} onNameChange={updateName} onAddPlayer={addPlayer} onRemovePlayer={removePlayer} savedPlayers={savedPlayers} onAddSavedPlayer={addSavedPlayerToGame} onRulesChange={(key, value) => setDraftRules((rules) => ({ ...rules, [key]: value }))} onStart={startGame} />
       <SettingsModal visible={settingsVisible} rules={settingsDraft} players={savedPlayers} error={settingsError} onClose={() => setSettingsVisible(false)} onRulesChange={(key, value) => { setSettingsDraft((rules) => ({ ...rules, [key]: value })); setSettingsError(""); }} onSave={saveDefaultRules} onManagePlayers={() => { setSettingsVisible(false); openPlayerLibrary(); }} />
       <PlayerLibraryModal visible={playerLibraryVisible} name={playerLibraryName} players={savedPlayers} error={playerLibraryError} onClose={() => setPlayerLibraryVisible(false)} onNameChange={(name) => { setPlayerLibraryName(name); setPlayerLibraryError(""); }} onSave={savePlayerToLibrary} />
       {game && <RejoinModal visible={rejoinVisible} game={game} onClose={() => setRejoinVisible(false)} onRejoin={rejoinPlayer} />}

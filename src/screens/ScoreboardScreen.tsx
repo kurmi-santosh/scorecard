@@ -2,7 +2,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { PlayerCard } from "../components/PlayerCard";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { RoundHistory } from "../components/RoundHistory";
-import { getCurrentOpenCardPlayerId, getPlayersInTurnOrder } from "../domain/game";
+import { getCardDistributorPlayerId, getCurrentOpenCardPlayerId, getPlayersInTurnOrder } from "../domain/game";
 import { Game, Player } from "../domain/types";
 import { styles } from "../styles";
 
@@ -34,12 +34,29 @@ export function ScoreboardScreen({
   const hasEliminatedPlayers = activePlayers.length !== game.players.length;
   const lowestActiveScore = Math.min(...activePlayers.map((player) => player.total));
   const openCardPlayerId = getCurrentOpenCardPlayerId(game.players, game.openCardPlayerId);
+  const distributorPlayerId = getCardDistributorPlayerId(game.players, openCardPlayerId);
 
   return (
     <View style={styles.screen}>
       <View style={styles.topBar}>
-        <Pressable onPress={onOpenSettings} accessibilityRole="button" accessibilityLabel="Open settings"><Text style={styles.topBarTitle}>Scorecard</Text></Pressable>
-        <Pressable onPress={onNewGame} accessibilityRole="button"><Text style={styles.topBarAction}>New game</Text></Pressable>
+        <Pressable
+          style={({ pressed }) => [styles.topBarControl, pressed && styles.pressed]}
+          onPress={onOpenSettings}
+          accessibilityRole="button"
+          accessibilityLabel="Open settings"
+          hitSlop={8}
+        >
+          <Text style={styles.topBarTitle}>Scorecard</Text>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [styles.topBarControl, styles.topBarActionControl, pressed && styles.pressed]}
+          onPress={onNewGame}
+          accessibilityRole="button"
+          accessibilityLabel="Start a new game"
+          hitSlop={8}
+        >
+          <Text style={styles.topBarAction}>New game</Text>
+        </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {game.status === "complete" && (
@@ -57,6 +74,7 @@ export function ScoreboardScreen({
             rules={game.rules}
             isLowestScore={player.total === lowestActiveScore}
             isOpenCardPlayer={player.id === openCardPlayerId}
+            isDistributor={player.id === distributorPlayerId}
           />
         ))}
 
