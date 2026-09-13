@@ -4,6 +4,7 @@ export const STORAGE_KEY = "scorecard.active-game.v1";
 export const PLAYERS_STORAGE_KEY = "scorecard.saved-players.v1";
 export const DEFAULT_RULES_STORAGE_KEY = "scorecard.default-rules.v1";
 export const MAX_PLAYERS = 6;
+export const MAX_PLAYER_NAME_LENGTH = 12;
 
 export const DEFAULT_RULES: Rules = {
   maxScore: 200,

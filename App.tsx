@@ -1,14 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Platform, SafeAreaView, StatusBar as NativeStatusBar, Text, View } from "react-native";
-import { DEFAULT_RULES, DEFAULT_RULES_STORAGE_KEY, makeId, MAX_PLAYERS, PLAYERS_STORAGE_KEY, STORAGE_KEY } from "./src/constants";
+import { Alert, Modal, Platform, Pressable, SafeAreaView, StatusBar as NativeStatusBar, Text, View } from "react-native";
+import { DEFAULT_RULES, DEFAULT_RULES_STORAGE_KEY, makeId, MAX_PLAYER_NAME_LENGTH, MAX_PLAYERS, PLAYERS_STORAGE_KEY, STORAGE_KEY } from "./src/constants";
 import { PlayerLibraryModal } from "./src/components/modals/PlayerLibraryModal";
 import { RejoinModal } from "./src/components/modals/RejoinModal";
 import { RoundModal } from "./src/components/modals/RoundModal";
 import { SettingsModal } from "./src/components/modals/SettingsModal";
 import { SetupModal } from "./src/components/modals/SetupModal";
-import { getCardDistributorPlayerId, getCurrentOpenCardPlayerId, getLegacyOpenCardPlayerId, getNextOpenCardPlayerId, rebuildPlayers, rejoinPlayerAtScore } from "./src/domain/game";
+import { getCardDistributorPlayerId, getCurrentOpenCardPlayerId, getLegacyOpenCardPlayerId, getNextOpenCardPlayerId, getRejoinEligiblePlayerIds, rebuildPlayers, rejoinPlayerAtScore } from "./src/domain/game";
 import { getRulesError, getRulesFromDraft, getScoreForKind, normalizeRules, toRulesDraft } from "./src/domain/rules";
 import { DraftEntry, Game, Player, Round, RoundEntry, Rules, RulesDraft, SavedPlayer } from "./src/domain/types";
 import { ScoreboardScreen } from "./src/screens/ScoreboardScreen";
@@ -24,6 +24,7 @@ export default function App() {
   const [playerLibraryVisible, setPlayerLibraryVisible] = useState(false);
   const [rejoinVisible, setRejoinVisible] = useState(false);
   const [roundVisible, setRoundVisible] = useState(false);
+  const [newGameConfirmationVisible, setNewGameConfirmationVisible] = useState(false);
   const [editingRound, setEditingRound] = useState<Round | null>(null);
   const [historyVisible, setHistoryVisible] = useState(false);
   const [savedPlayers, setSavedPlayers] = useState<SavedPlayer[]>([]);
@@ -114,6 +115,14 @@ export default function App() {
     setSetupVisible(true);
   };
 
+  const openNewGame = () => {
+    if (!game) {
+      openSetup();
+      return;
+    }
+    setNewGameConfirmationVisible(true);
+  };
+
   const openSettings = () => {
     setSettingsDraft(toRulesDraft(defaultRules));
     setSettingsError("");
@@ -127,7 +136,7 @@ export default function App() {
   };
 
   const updateName = (index: number, value: string) => {
-    setDraftNames((names) => names.map((name, position) => (position === index ? value : name)));
+    setDraftNames((names) => names.map((name, position) => (position === index ? value.slice(0, MAX_PLAYER_NAME_LENGTH) : name)));
   };
 
   const addPlayer = () => {
@@ -160,6 +169,26 @@ export default function App() {
     void persistSavedPlayers([name]);
     setPlayerLibraryName("");
     setPlayerLibraryError("");
+  };
+
+  const deleteSavedPlayer = (playerId: string) => {
+    const player = savedPlayers.find((candidate) => candidate.id === playerId);
+    if (!player) return;
+
+    Alert.alert("Delete saved player?", `${player.name} will be removed from saved players. Games already in progress are unchanged.`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          const nextPlayers = savedPlayers.filter((candidate) => candidate.id !== playerId);
+          setSavedPlayers(nextPlayers);
+          void AsyncStorage.setItem(PLAYERS_STORAGE_KEY, JSON.stringify(nextPlayers)).catch(() => {
+            Alert.alert("Player removed", "The player was removed for this session, but the update could not be saved for later.");
+          });
+        },
+      },
+    ]);
   };
 
   const saveDefaultRules = () => {
@@ -239,7 +268,15 @@ export default function App() {
   };
 
   const updateRoundDraft = (playerId: string, update: Partial<DraftEntry>) => {
-    setRoundDraft((draft) => ({ ...draft, [playerId]: { ...draft[playerId], ...update } }));
+    setRoundDraft((draft) => {
+      const updatedDraft = { ...draft };
+      if (update.kind === "winner") {
+        Object.keys(updatedDraft).forEach((id) => {
+          if (id !== playerId && updatedDraft[id]?.kind === "winner") updatedDraft[id] = { ...updatedDraft[id], kind: null, score: "" };
+        });
+      }
+      return { ...updatedDraft, [playerId]: { ...updatedDraft[playerId], ...update } };
+    });
   };
 
   const saveRound = () => {
@@ -247,6 +284,15 @@ export default function App() {
     const roundPlayers = editingRound
       ? game.players.filter((player) => editingRound.entries.some((entry) => entry.playerId === player.id))
       : game.players.filter((player) => !player.eliminated);
+    const playersMissingScores = roundPlayers.filter((player) => {
+      const draft = roundDraft[player.id];
+      return !draft?.kind || (draft.kind === "manual" && !draft.score.trim());
+    });
+    if (playersMissingScores.length) {
+      setRoundError(`Add a score for ${playersMissingScores.map((player) => player.name).join(", ")}.`);
+      return;
+    }
+
     const winners = roundPlayers.filter((player) => roundDraft[player.id]?.kind === "winner");
     if (winners.length !== 1) {
       setRoundError("Choose exactly one round winner.");
@@ -257,15 +303,15 @@ export default function App() {
     for (const player of roundPlayers) {
       const draft = roundDraft[player.id];
       const score = draft ? getScoreForKind(draft, game.rules) : Number.NaN;
-      if (!draft?.kind) {
-        setRoundError(`Choose Win, Drop, Mid, Full, or enter a manual score for ${player.name}.`);
+      if (draft?.kind === "manual" && (!Number.isSafeInteger(score) || score <= 0 || score >= game.rules.fullScore)) {
+        setRoundError(`Enter a positive score below ${game.rules.fullScore} for ${player.name}.`);
         return;
       }
       if (!Number.isInteger(score) || score < 0 || score > game.rules.maxScore) {
         setRoundError(`Enter a score from 0 to ${game.rules.maxScore} for ${player.name}.`);
         return;
       }
-      entries.push({ playerId: player.id, kind: draft.kind, score });
+      entries.push({ playerId: player.id, kind: draft!.kind!, score });
     }
 
     const round: Round = editingRound
@@ -293,7 +339,8 @@ export default function App() {
   const rejoinPlayer = (playerId: string) => {
     if (!game) return;
     const player = game.players.find((candidate) => candidate.id === playerId);
-    if (!player?.eliminated) return;
+    const eligiblePlayerIds = getRejoinEligiblePlayerIds(game.players, game.rounds, game.rules);
+    if (!player?.eliminated || !eligiblePlayerIds.includes(playerId)) return;
     const otherActivePlayers = game.players.filter((candidate) => candidate.id !== playerId && !candidate.eliminated);
     const rejoinScore = otherActivePlayers.length ? Math.max(...otherActivePlayers.map((candidate) => candidate.total)) + 1 : 0;
     if (rejoinScore >= game.rules.maxScore) {
@@ -322,18 +369,30 @@ export default function App() {
           historyVisible={historyVisible}
           onToggleHistory={() => setHistoryVisible((visible) => !visible)}
           onAddRound={openRound}
-          onNewGame={openSetup}
+          onNewGame={openNewGame}
           onOpenSettings={openSettings}
           onOpenRejoin={() => setRejoinVisible(true)}
           onEditLastRound={openLastRoundEditor}
         />
-      ) : <WelcomeScreen hasGame={Boolean(game)} onStart={openSetup} onResume={() => setShowHome(false)} onManagePlayers={openPlayerLibrary} />}
+      ) : <WelcomeScreen hasGame={Boolean(game)} onStart={openNewGame} onResume={() => setShowHome(false)} onManagePlayers={openPlayerLibrary} />}
 
       <SetupModal visible={setupVisible} names={draftNames} rules={draftRules} error={setupError} onClose={() => setSetupVisible(false)} onNameChange={updateName} onAddPlayer={addPlayer} onRemovePlayer={removePlayer} savedPlayers={savedPlayers} onAddSavedPlayer={addSavedPlayerToGame} onRulesChange={(key, value) => setDraftRules((rules) => ({ ...rules, [key]: value }))} onStart={startGame} />
       <SettingsModal visible={settingsVisible} rules={settingsDraft} players={savedPlayers} error={settingsError} onClose={() => setSettingsVisible(false)} onRulesChange={(key, value) => { setSettingsDraft((rules) => ({ ...rules, [key]: value })); setSettingsError(""); }} onSave={saveDefaultRules} onManagePlayers={() => { setSettingsVisible(false); openPlayerLibrary(); }} />
-      <PlayerLibraryModal visible={playerLibraryVisible} name={playerLibraryName} players={savedPlayers} error={playerLibraryError} onClose={() => setPlayerLibraryVisible(false)} onNameChange={(name) => { setPlayerLibraryName(name); setPlayerLibraryError(""); }} onSave={savePlayerToLibrary} />
+      <PlayerLibraryModal visible={playerLibraryVisible} name={playerLibraryName} players={savedPlayers} error={playerLibraryError} onClose={() => setPlayerLibraryVisible(false)} onNameChange={(name) => { setPlayerLibraryName(name.slice(0, MAX_PLAYER_NAME_LENGTH)); setPlayerLibraryError(""); }} onSave={savePlayerToLibrary} onDelete={deleteSavedPlayer} />
       {game && <RejoinModal visible={rejoinVisible} game={game} onClose={() => setRejoinVisible(false)} onRejoin={rejoinPlayer} />}
       {game && <RoundModal visible={roundVisible} game={game} draft={roundDraft} error={roundError} roundToEdit={editingRound} onClose={() => { setRoundVisible(false); setEditingRound(null); }} onChange={updateRoundDraft} onSave={saveRound} />}
+      <Modal transparent visible={newGameConfirmationVisible} animationType="fade" onRequestClose={() => setNewGameConfirmationVisible(false)}>
+        <View style={styles.confirmationOverlay}>
+          <View style={styles.confirmationCard} accessibilityViewIsModal>
+            <Text style={styles.confirmationTitle}>Start a new game?</Text>
+            <Text style={styles.confirmationCopy}>Your current game stays saved while you set up the new table. Starting the new scorecard will then replace it.</Text>
+            <View style={styles.confirmationActions}>
+              <Pressable style={[styles.confirmationAction, styles.confirmationCancel]} onPress={() => setNewGameConfirmationVisible(false)} accessibilityRole="button"><Text style={styles.confirmationCancelText}>Cancel</Text></Pressable>
+              <Pressable style={[styles.confirmationAction, styles.confirmationContinue]} onPress={() => { setNewGameConfirmationVisible(false); openSetup(); }} accessibilityRole="button"><Text style={styles.confirmationContinueText}>Continue</Text></Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

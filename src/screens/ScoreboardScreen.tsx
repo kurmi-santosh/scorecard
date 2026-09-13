@@ -2,7 +2,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { PlayerCard } from "../components/PlayerCard";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { RoundHistory } from "../components/RoundHistory";
-import { getCardDistributorPlayerId, getCurrentOpenCardPlayerId, getPlayersInTurnOrder } from "../domain/game";
+import { getCardDistributorPlayerId, getCurrentOpenCardPlayerId, getPlayersInTurnOrder, getRejoinEligiblePlayerIds } from "../domain/game";
 import { Game, Player } from "../domain/types";
 import { styles } from "../styles";
 
@@ -31,7 +31,7 @@ export function ScoreboardScreen({
 }: Props) {
   const winner = game.status === "complete" ? rankedPlayers[0] : undefined;
   const activePlayers = getPlayersInTurnOrder(game.players).filter((player) => !player.eliminated);
-  const hasEliminatedPlayers = activePlayers.length !== game.players.length;
+  const rejoinEligiblePlayerIds = getRejoinEligiblePlayerIds(game.players, game.rounds, game.rules);
   const lowestActiveScore = Math.min(...activePlayers.map((player) => player.total));
   const openCardPlayerId = getCurrentOpenCardPlayerId(game.players, game.openCardPlayerId);
   const distributorPlayerId = getCardDistributorPlayerId(game.players, openCardPlayerId);
@@ -78,11 +78,11 @@ export function ScoreboardScreen({
           />
         ))}
 
-        {hasEliminatedPlayers && <Pressable style={styles.rejoinButton} onPress={onOpenRejoin} accessibilityRole="button"><Text style={styles.rejoinButtonText}>Rejoin a player</Text></Pressable>}
+        {rejoinEligiblePlayerIds.length > 0 && <Pressable style={styles.rejoinButton} onPress={onOpenRejoin} accessibilityRole="button"><Text style={styles.rejoinButtonText}>Rejoin a player</Text></Pressable>}
 
         {game.status === "active" ? (
           <>
-            <PrimaryButton label="Add round" onPress={onAddRound} />
+            <PrimaryButton label="Add scores" onPress={onAddRound} />
           </>
         ) : (
           <>
@@ -96,7 +96,7 @@ export function ScoreboardScreen({
               <Pressable style={styles.roundAction} onPress={onEditLastRound} accessibilityRole="button"><Text style={styles.secondaryButtonText}>Edit last round</Text></Pressable>
               <Pressable style={styles.roundAction} onPress={onToggleHistory} accessibilityRole="button"><Text style={styles.secondaryButtonText}>{historyVisible ? "Hide history" : "View history"}</Text></Pressable>
             </View>
-            {historyVisible && <View style={styles.historyArea}><RoundHistory rounds={game.rounds} players={game.players} rules={game.rules} /></View>}
+            {historyVisible && <View style={styles.historyArea}><RoundHistory rounds={game.rounds} players={game.players} /></View>}
           </>
         )}
       </ScrollView>

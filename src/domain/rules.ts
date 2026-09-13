@@ -51,6 +51,14 @@ export const getScoreForKind = (entry: DraftEntry, rules: Rules) => (
   !entry.kind ? Number.NaN : entry.kind === "manual" ? getNumberFromDraft(entry.score) : getPresetScore(entry.kind, rules)
 );
 
+export const getRemainingTableStatus = (score: number, rules: Rules) => {
+  const safePointsRemaining = Math.max(0, rules.maxScore - score - 1);
+  return {
+    safePointsRemaining,
+    remainingDrops: Math.floor(safePointsRemaining / rules.firstDropScore),
+  };
+};
+
 export const roundChoiceLabel = (kind: Exclude<ScoreKind, "manual">) => ({
   winner: "Win",
   firstDrop: "Drop",
@@ -59,8 +67,7 @@ export const roundChoiceLabel = (kind: Exclude<ScoreKind, "manual">) => ({
 }[kind]);
 
 export const getScoreTone = (score: number, rules: Rules, isLowestScore: boolean) => {
-  const safePoints = Math.max(0, rules.maxScore - score - 1);
-  const remainingDrops = Math.floor(safePoints / rules.firstDropScore);
+  const { remainingDrops } = getRemainingTableStatus(score, rules);
 
   if (remainingDrops === 0) return { accent: "#BE4A43", surface: "#FDEBE9", border: "#E37A72" };
   if (remainingDrops <= 1) return { accent: "#C46C08", surface: "#FFF1E0", border: "#E7A34C" };

@@ -16,8 +16,8 @@ require.extensions[".ts"] = (module, filename) => {
 };
 
 const { DEFAULT_RULES } = require("../src/constants.ts");
-const { getCardDistributorPlayerId, rebuildPlayers, rejoinPlayerAtScore } = require("../src/domain/game.ts");
-const { getRulesError, getRulesFromDraft, getScoreForKind, normalizeRules } = require("../src/domain/rules.ts");
+const { getCardDistributorPlayerId, getRejoinEligiblePlayerIds, rebuildPlayers, rejoinPlayerAtScore } = require("../src/domain/game.ts");
+const { getRemainingTableStatus, getRulesError, getRulesFromDraft, getScoreForKind, normalizeRules } = require("../src/domain/rules.ts");
 
 const players = [
   { id: "a", name: "Ari", seat: 1, total: 0, eliminated: false },
@@ -71,6 +71,14 @@ test("a rejoined player keeps the rejoin score through future rebuilds and histo
   assert.equal(rebuiltAfterEdit[0].total, 125);
 });
 
+test("only a player eliminated in the latest round can rejoin", () => {
+  const eliminatedPlayers = rebuildPlayers(players, [eliminationRound], DEFAULT_RULES);
+  assert.deepEqual(getRejoinEligiblePlayerIds(eliminatedPlayers, [eliminationRound], DEFAULT_RULES), ["a"]);
+
+  const nextRound = { ...eliminationRound, id: "round-2", number: 2, entries: [{ playerId: "b", kind: "winner", score: 0 }] };
+  assert.deepEqual(getRejoinEligiblePlayerIds(eliminatedPlayers, [eliminationRound, nextRound], DEFAULT_RULES), []);
+});
+
 test("rules require positive whole numbers and usable preset scores", () => {
   assert.equal(getRulesError(DEFAULT_RULES), "");
   assert.match(getRulesError({ maxScore: 200, fullScore: 80, firstDropScore: -5, middleDropScore: -1 }), /positive whole-number/);
@@ -86,4 +94,9 @@ test("manual score parsing does not truncate invalid input", () => {
   assert.equal(getScoreForKind({ kind: "manual", score: "19" }, DEFAULT_RULES), 19);
   assert.equal(getScoreForKind({ kind: "manual", score: "19.5" }, DEFAULT_RULES), 19.5);
   assert.ok(Number.isNaN(getScoreForKind({ kind: "manual", score: "19 points" }, DEFAULT_RULES)));
+});
+
+test("remaining drops and points use the game's configured table rules", () => {
+  const rules = { maxScore: 150, fullScore: 60, firstDropScore: 20, middleDropScore: 40 };
+  assert.deepEqual(getRemainingTableStatus(29, rules), { safePointsRemaining: 120, remainingDrops: 6 });
 });

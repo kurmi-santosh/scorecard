@@ -25,6 +25,15 @@ export const rejoinPlayerAtScore = (players: Player[], playerId: string, total: 
     : candidate);
 };
 
+export const getRejoinEligiblePlayerIds = (players: Player[], rounds: Round[], rules: Rules) => {
+  if (!rounds.length) return [];
+
+  const playersBeforeLastRound = rebuildPlayers(players, rounds.slice(0, -1), rules);
+  return players
+    .filter((player) => player.eliminated && !playersBeforeLastRound.find((candidate) => candidate.id === player.id)?.eliminated)
+    .map((player) => player.id);
+};
+
 export const getPlayersInTurnOrder = (players: Player[]) => [...players].sort((a, b) => a.seat - b.seat);
 
 export const getCardDistributorPlayerId = (players: Player[], openCardPlayerId: string | null) => {

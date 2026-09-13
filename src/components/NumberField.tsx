@@ -18,7 +18,7 @@ export function NumberField({ label, value, placeholder, accessibilityLabel, com
         value={value}
         onChangeText={onChangeText}
         keyboardType="number-pad"
-        style={styles.numberInput}
+        style={[styles.numberInput, compact && styles.compactNumberInput]}
         placeholder={placeholder}
         placeholderTextColor="#7A8798"
         accessibilityLabel={accessibilityLabel ?? label}

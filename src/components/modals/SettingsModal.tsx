@@ -20,13 +20,15 @@ export function SettingsModal({ visible, rules, players, error, onClose, onRules
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={styles.modalSafe}>
         <KeyboardAvoidingView style={styles.modalKeyboard} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-          <View style={styles.modalHeader}><Text style={styles.modalTitle}>Default scores</Text><Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close default scores"><Text style={styles.dangerCloseText}>Close</Text></Pressable></View>
+          <View style={styles.modalHeader}><Text style={styles.modalTitle}>Default scores</Text><Pressable style={styles.modalCloseControl} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close default scores"><Text style={styles.dangerCloseText}>Close</Text></Pressable></View>
           <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
-            <Text style={styles.modalLead}>These values fill in new games. A game already in progress keeps the rules it started with.</Text>
-            <NumberField label="Game score" value={rules.maxScore} onChangeText={(value) => onRulesChange("maxScore", value)} />
-            <NumberField label="Full score" value={rules.fullScore} onChangeText={(value) => onRulesChange("fullScore", value)} />
-            <NumberField label="Drop score" value={rules.firstDropScore} onChangeText={(value) => onRulesChange("firstDropScore", value)} />
-            <NumberField label="Mid score" value={rules.middleDropScore} onChangeText={(value) => onRulesChange("middleDropScore", value)} />
+            <Text style={styles.modalLead}>Used for new games only.</Text>
+            <View style={styles.scoreGrid}>
+              <View style={styles.scoreGridItem}><NumberField compact label="Game score" value={rules.maxScore} onChangeText={(value) => onRulesChange("maxScore", value)} /></View>
+              <View style={styles.scoreGridItem}><NumberField compact label="Full score" value={rules.fullScore} onChangeText={(value) => onRulesChange("fullScore", value)} /></View>
+              <View style={styles.scoreGridItem}><NumberField compact label="Drop score" value={rules.firstDropScore} onChangeText={(value) => onRulesChange("firstDropScore", value)} /></View>
+              <View style={styles.scoreGridItem}><NumberField compact label="Mid score" value={rules.middleDropScore} onChangeText={(value) => onRulesChange("middleDropScore", value)} /></View>
+            </View>
             {!!error && <Text style={styles.errorText}>{error}</Text>}
             <PrimaryButton label="Save defaults" onPress={onSave} />
             <Text style={[styles.formTitle, styles.settingsPlayersTitle]}>Saved players</Text>

@@ -1,5 +1,5 @@
 import { Text, View } from "react-native";
-import { getScoreTone } from "../domain/rules";
+import { getRemainingTableStatus, getScoreTone } from "../domain/rules";
 import { Player, Rules } from "../domain/types";
 import { styles } from "../styles";
 
@@ -14,8 +14,7 @@ type Props = {
 export function PlayerCard({ player, rules, isLowestScore, isOpenCardPlayer, isDistributor }: Props) {
   const progress = Math.min(player.total / rules.maxScore, 1);
   const scoreTone = getScoreTone(player.total, rules, isLowestScore);
-  const safePointsRemaining = Math.max(0, rules.maxScore - player.total - 1);
-  const remainingDrops = Math.floor(safePointsRemaining / rules.firstDropScore);
+  const { safePointsRemaining, remainingDrops } = getRemainingTableStatus(player.total, rules);
   const showRemainingStatus = player.total >= rules.maxScore - rules.fullScore;
 
   return (
