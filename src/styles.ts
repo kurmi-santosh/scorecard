@@ -107,6 +107,7 @@ export const styles = StyleSheet.create({
   compactField: { marginBottom: 0, marginTop: 0 },
   fieldLabel: { color: "#374B61", fontSize: 13, fontWeight: "700", marginBottom: 4 },
   numberInput: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#D9E0E8", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, color: "#172B43" },
+  numberInputError: { borderColor: "#C95047", borderWidth: 2 },
   compactNumberInput: { paddingVertical: 6, fontSize: 15 },
   errorText: { color: "#A53832", fontSize: 14, fontWeight: "700", marginTop: 12 },
   roundErrorBanner: { backgroundColor: "#FCE9E7", borderBottomWidth: 1, borderBottomColor: "#E27A72", color: "#8F2D28", fontSize: 14, fontWeight: "800", paddingHorizontal: 16, paddingVertical: 9 },

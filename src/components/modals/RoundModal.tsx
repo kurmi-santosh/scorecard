@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { KeyboardAvoidingView, Modal, Platform, Pressable, SafeAreaView, ScrollView, Text, View } from "react-native";
 import { getPresetScore, roundChoiceLabel } from "../../domain/rules";
 import { DraftEntry, Game, Round, ScoreKind } from "../../domain/types";
@@ -20,21 +21,32 @@ type Props = {
 export function RoundModal({ visible, game, draft, error, roundToEdit, onClose, onChange, onSave }: Props) {
   const roundPlayers = roundToEdit ? game.players.filter((player) => roundToEdit.entries.some((entry) => entry.playerId === player.id)) : game.players.filter((player) => !player.eliminated);
   const roundNumber = roundToEdit?.number ?? game.rounds.length + 1;
+  const scrollViewRef = useRef<ScrollView>(null);
+  const playerCardOffsets = useRef<Record<string, number>>({});
+
+  const revealScoreField = (playerId: string) => {
+    const offset = playerCardOffsets.current[playerId];
+    if (offset === undefined) return;
+
+    requestAnimationFrame(() => scrollViewRef.current?.scrollTo({ y: Math.max(0, offset - 12), animated: true }));
+  };
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={styles.modalSafe}>
-        <KeyboardAvoidingView style={styles.modalKeyboard} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <KeyboardAvoidingView style={styles.modalKeyboard} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View style={styles.modalHeader}><Text style={styles.modalTitle}>{roundToEdit ? "Edit" : "Round"} {roundNumber}</Text><Pressable style={styles.modalCloseControl} onPress={onClose} accessibilityRole="button" accessibilityLabel={roundToEdit ? "Close editor" : "Cancel round"}><Text style={roundToEdit ? styles.dangerCloseText : styles.closeText}>{roundToEdit ? "Close" : "Cancel"}</Text></Pressable></View>
           {!!error && <Text style={styles.roundErrorBanner} accessibilityLiveRegion="assertive">{error}</Text>}
-          <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
+          <ScrollView ref={scrollViewRef} contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
             {roundPlayers.map((player) => {
               const entry = draft[player.id] ?? { kind: null, score: "" };
+              const manualScore = Number(entry.score);
+              const scoreIsOutOfRange = entry.kind === "manual" && entry.score.trim() !== "" && (manualScore < 2 || manualScore > game.rules.fullScore);
               return (
-                <View style={styles.roundCard} key={player.id}>
+                <View style={styles.roundCard} key={player.id} onLayout={(event) => { playerCardOffsets.current[player.id] = event.nativeEvent.layout.y; }}>
                   <View style={styles.roundPlayerHeader}>
                     <View style={styles.roundPlayerDetails}><Text style={styles.roundPlayerName}>{player.name}</Text><Text style={styles.roundPlayerTotal}>{player.total} / {game.rules.maxScore}</Text></View>
-                    <View style={styles.roundManualScore}><NumberField value={entry.score} placeholder="Score" accessibilityLabel={`Manual score for ${player.name}`} compact onChangeText={(value) => onChange(player.id, { kind: "manual", score: value })} /></View>
+                    <View style={styles.roundManualScore}><NumberField value={entry.score} placeholder="Score" accessibilityLabel={`Manual score for ${player.name}`} compact error={scoreIsOutOfRange} errorMessage={`Score must be 2–${game.rules.fullScore}.`} onChangeText={(value) => onChange(player.id, { kind: "manual", score: value })} onFocus={() => revealScoreField(player.id)} /></View>
                   </View>
                   <View style={styles.kindGrid}>
                     {(["winner", "firstDrop", "middleDrop", "full"] as Exclude<ScoreKind, "manual">[]).map((kind) => <KindButton key={kind} kind={kind} selected={entry.kind === kind} label={roundChoiceLabel(kind)} onPress={() => onChange(player.id, { kind, score: String(getPresetScore(kind, game.rules)) })} />)}

@@ -303,8 +303,8 @@ export default function App() {
     for (const player of roundPlayers) {
       const draft = roundDraft[player.id];
       const score = draft ? getScoreForKind(draft, game.rules) : Number.NaN;
-      if (draft?.kind === "manual" && (!Number.isSafeInteger(score) || score <= 0 || score >= game.rules.fullScore)) {
-        setRoundError(`Enter a positive score below ${game.rules.fullScore} for ${player.name}.`);
+      if (draft?.kind === "manual" && (!Number.isSafeInteger(score) || score < 2 || score > game.rules.fullScore)) {
+        setRoundError(`Score must be 2–${game.rules.fullScore}.`);
         return;
       }
       if (!Number.isInteger(score) || score < 0 || score > game.rules.maxScore) {
