@@ -16,7 +16,7 @@ require.extensions[".ts"] = (module, filename) => {
 };
 
 const { DEFAULT_RULES } = require("../src/constants.ts");
-const { getCardDistributorPlayerId, getRejoinEligiblePlayerIds, rebuildPlayers, rejoinPlayerAtScore } = require("../src/domain/game.ts");
+const { getCardDistributorPlayerId, getCurrentDealerPlayerId, getRejoinEligiblePlayerIds, rebuildPlayers, rejoinPlayerAtScore } = require("../src/domain/game.ts");
 const { getRemainingTableStatus, getRulesError, getRulesFromDraft, getScoreForKind, normalizeRules } = require("../src/domain/rules.ts");
 
 const players = [
@@ -50,7 +50,7 @@ test("a rejoined player keeps the rejoin score through future rebuilds and histo
   const eliminatedPlayers = rebuildPlayers(players, [eliminationRound], DEFAULT_RULES);
   assert.equal(eliminatedPlayers[0].eliminated, true);
 
-  const rejoinedPlayers = rejoinPlayerAtScore(eliminatedPlayers, "a", 101, eliminationRound.id);
+  const rejoinedPlayers = rejoinPlayerAtScore(eliminatedPlayers, "a", 101, eliminationRound.id, "b");
   assert.deepEqual(rejoinedPlayers[0].scoreReset, { afterRoundId: eliminationRound.id, total: 101 });
 
   const nextRound = {
@@ -69,6 +69,21 @@ test("a rejoined player keeps the rejoin score through future rebuilds and histo
   const editedEliminationRound = { ...eliminationRound, entries: [{ playerId: "a", kind: "manual", score: 80 }, { playerId: "b", kind: "manual", score: 100 }] };
   const rebuiltAfterEdit = rebuildPlayers(rejoinedPlayers, [editedEliminationRound, nextRound], DEFAULT_RULES);
   assert.equal(rebuiltAfterEdit[0].total, 125);
+});
+
+test("a rejoined player is immediately before the open-card player", () => {
+  const table = [
+    { id: "a", name: "Ari", seat: 1, total: 30, eliminated: false },
+    { id: "b", name: "Bea", seat: 2, total: 40, eliminated: false },
+    { id: "c", name: "Cyd", seat: 3, total: 200, eliminated: true },
+    { id: "d", name: "Dev", seat: 4, total: 50, eliminated: false },
+  ];
+
+  const rejoinedPlayers = rejoinPlayerAtScore(table, "c", 51, "round-4", "b");
+  assert.deepEqual(rejoinedPlayers.filter((player) => !player.eliminated).sort((left, right) => left.seat - right.seat).map((player) => player.id), ["a", "c", "b", "d"]);
+  assert.equal(getCardDistributorPlayerId(rejoinedPlayers, "b"), "c");
+  assert.equal(getCurrentDealerPlayerId(rejoinedPlayers, "b", "a"), "a");
+  assert.equal(getCurrentDealerPlayerId(rejoinedPlayers, "d", null), "b");
 });
 
 test("only a player eliminated in the latest round can rejoin", () => {

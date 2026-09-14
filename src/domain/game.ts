@@ -15,14 +15,19 @@ export const rebuildPlayers = (players: Player[], rounds: Round[], rules: Rules)
     return { ...player, total, eliminated: total >= rules.maxScore };
   });
 
-export const rejoinPlayerAtScore = (players: Player[], playerId: string, total: number, afterRoundId: string) => {
+export const rejoinPlayerAtScore = (players: Player[], playerId: string, total: number, afterRoundId: string, openCardPlayerId: string | null) => {
   const player = players.find((candidate) => candidate.id === playerId);
   if (!player?.eliminated) return players;
 
-  const lastSeat = Math.max(0, ...players.map((candidate) => candidate.seat)) + 1;
+  const activePlayers = getPlayersInTurnOrder(players).filter((candidate) => !candidate.eliminated);
+  const openCardPlayerIndex = activePlayers.findIndex((candidate) => candidate.id === openCardPlayerId);
+  const insertAt = openCardPlayerIndex < 0 ? activePlayers.length : openCardPlayerIndex;
+  const turnOrder = [...activePlayers.slice(0, insertAt), player, ...activePlayers.slice(insertAt)];
+  const seats = new Map(turnOrder.map((candidate, index) => [candidate.id, index + 1]));
+
   return players.map((candidate) => candidate.id === playerId
-    ? { ...candidate, total, eliminated: false, seat: lastSeat, scoreReset: { afterRoundId, total } }
-    : candidate);
+    ? { ...candidate, total, eliminated: false, seat: seats.get(candidate.id)!, scoreReset: { afterRoundId, total } }
+    : seats.has(candidate.id) ? { ...candidate, seat: seats.get(candidate.id)! } : candidate);
 };
 
 export const getRejoinEligiblePlayerIds = (players: Player[], rounds: Round[], rules: Rules) => {
@@ -44,6 +49,12 @@ export const getCardDistributorPlayerId = (players: Player[], openCardPlayerId: 
   const distributorIndex = openCardPlayerIndex < 0 ? activePlayers.length - 1 : (openCardPlayerIndex - 1 + activePlayers.length) % activePlayers.length;
   return activePlayers[distributorIndex].id;
 };
+
+export const getCurrentDealerPlayerId = (players: Player[], openCardPlayerId: string | null, currentDealerPlayerId?: string | null) => (
+  players.some((player) => player.id === currentDealerPlayerId && !player.eliminated)
+    ? currentDealerPlayerId!
+    : getCardDistributorPlayerId(players, openCardPlayerId)
+);
 
 export const getLegacyOpenCardPlayerId = (players: Player[], rounds: Round[]) => {
   const activePlayers = getPlayersInTurnOrder(players).filter((player) => !player.eliminated);

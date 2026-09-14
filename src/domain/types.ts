@@ -49,6 +49,7 @@ export type Game = {
   rounds: Round[];
   status: GameStatus;
   openCardPlayerId: string | null;
+  currentDealerPlayerId?: string | null;
 };
 
 export type DraftEntry = {

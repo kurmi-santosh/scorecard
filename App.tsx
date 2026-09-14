@@ -8,7 +8,7 @@ import { RejoinModal } from "./src/components/modals/RejoinModal";
 import { RoundModal } from "./src/components/modals/RoundModal";
 import { SettingsModal } from "./src/components/modals/SettingsModal";
 import { SetupModal } from "./src/components/modals/SetupModal";
-import { getCardDistributorPlayerId, getCurrentOpenCardPlayerId, getLegacyOpenCardPlayerId, getNextOpenCardPlayerId, getRejoinEligiblePlayerIds, rebuildPlayers, rejoinPlayerAtScore } from "./src/domain/game";
+import { getCurrentDealerPlayerId, getCardDistributorPlayerId, getCurrentOpenCardPlayerId, getLegacyOpenCardPlayerId, getNextOpenCardPlayerId, getRejoinEligiblePlayerIds, rebuildPlayers, rejoinPlayerAtScore } from "./src/domain/game";
 import { getRulesError, getRulesFromDraft, getScoreForKind, normalizeRules, toRulesDraft } from "./src/domain/rules";
 import { DraftEntry, Game, Player, Round, RoundEntry, Rules, RulesDraft, SavedPlayer } from "./src/domain/types";
 import { ScoreboardScreen } from "./src/screens/ScoreboardScreen";
@@ -320,7 +320,7 @@ export default function App() {
           id: makeId(),
           number: game.rounds.length + 1,
           savedAt: new Date().toISOString(),
-          dealerPlayerId: getCardDistributorPlayerId(game.players, game.openCardPlayerId),
+          dealerPlayerId: getCurrentDealerPlayerId(game.players, game.openCardPlayerId, game.currentDealerPlayerId),
           entries,
         };
     const rounds = editingRound
@@ -331,7 +331,7 @@ export default function App() {
     const openCardPlayerId = editingRound
       ? getCurrentOpenCardPlayerId(players, game.openCardPlayerId)
       : getNextOpenCardPlayerId(players, game.openCardPlayerId);
-    void persist({ ...game, players, rounds, status: remainingPlayers.length <= 1 ? "complete" : "active", openCardPlayerId });
+    void persist({ ...game, players, rounds, status: remainingPlayers.length <= 1 ? "complete" : "active", openCardPlayerId, currentDealerPlayerId: editingRound ? game.currentDealerPlayerId : null });
     setRoundVisible(false);
     setEditingRound(null);
   };
@@ -350,8 +350,9 @@ export default function App() {
 
     const lastRound = game.rounds[game.rounds.length - 1];
     if (!lastRound) return;
-    const players = rejoinPlayerAtScore(game.players, playerId, rejoinScore, lastRound.id);
-    void persist({ ...game, players, status: "active", openCardPlayerId: getCurrentOpenCardPlayerId(players, game.openCardPlayerId) });
+    const currentDealerPlayerId = getCurrentDealerPlayerId(game.players, game.openCardPlayerId, game.currentDealerPlayerId);
+    const players = rejoinPlayerAtScore(game.players, playerId, rejoinScore, lastRound.id, game.openCardPlayerId);
+    void persist({ ...game, players, status: "active", openCardPlayerId: getCurrentOpenCardPlayerId(players, game.openCardPlayerId), currentDealerPlayerId });
     setRejoinVisible(false);
   };
 

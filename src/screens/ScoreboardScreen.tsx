@@ -2,7 +2,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { PlayerCard } from "../components/PlayerCard";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { RoundHistory } from "../components/RoundHistory";
-import { getCardDistributorPlayerId, getCurrentOpenCardPlayerId, getPlayersInTurnOrder, getRejoinEligiblePlayerIds } from "../domain/game";
+import { getCurrentDealerPlayerId, getCurrentOpenCardPlayerId, getPlayersInTurnOrder, getRejoinEligiblePlayerIds } from "../domain/game";
 import { Game, Player } from "../domain/types";
 import { styles } from "../styles";
 
@@ -34,7 +34,7 @@ export function ScoreboardScreen({
   const rejoinEligiblePlayerIds = getRejoinEligiblePlayerIds(game.players, game.rounds, game.rules);
   const lowestActiveScore = Math.min(...activePlayers.map((player) => player.total));
   const openCardPlayerId = getCurrentOpenCardPlayerId(game.players, game.openCardPlayerId);
-  const distributorPlayerId = getCardDistributorPlayerId(game.players, openCardPlayerId);
+  const distributorPlayerId = getCurrentDealerPlayerId(game.players, openCardPlayerId, game.currentDealerPlayerId);
 
   return (
     <View style={styles.screen}>
