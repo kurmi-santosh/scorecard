@@ -1,6 +1,10 @@
 node_modules/
+.npm-cache/
 .expo/
 dist/
 web-build/
+android/
+ios/
+*.apk
 *.log
 .DS_Store

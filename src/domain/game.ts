@@ -21,7 +21,9 @@ export const rejoinPlayerAtScore = (players: Player[], playerId: string, total: 
 
   const activePlayers = getPlayersInTurnOrder(players).filter((candidate) => !candidate.eliminated);
   const openCardPlayerIndex = activePlayers.findIndex((candidate) => candidate.id === openCardPlayerId);
-  const insertAt = openCardPlayerIndex < 0 ? activePlayers.length : openCardPlayerIndex;
+  const insertAt = openCardPlayerIndex < 0
+    ? activePlayers.length
+    : (openCardPlayerIndex - 1 + activePlayers.length) % activePlayers.length;
   const turnOrder = [...activePlayers.slice(0, insertAt), player, ...activePlayers.slice(insertAt)];
   const seats = new Map(turnOrder.map((candidate, index) => [candidate.id, index + 1]));
 

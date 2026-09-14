@@ -2,9 +2,9 @@
   "expo": {
     "name": "Scorecard",
     "slug": "scorecard",
-    "version": "1.0.5",
+    "version": "2.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon-1024.png",
+    "icon": "./assets/scorecard-icon-2.0.0.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -13,10 +13,10 @@
     },
     "android": {
       "package": "com.scorecard.app",
-      "versionCode": 6,
+      "versionCode": 13,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon-1024.png",
+        "foregroundImage": "./assets/scorecard-icon-2.0.0.png",
         "backgroundColor": "#0E2A4A"
       }
     },

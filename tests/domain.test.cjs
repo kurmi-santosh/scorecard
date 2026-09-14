@@ -71,7 +71,7 @@ test("a rejoined player keeps the rejoin score through future rebuilds and histo
   assert.equal(rebuiltAfterEdit[0].total, 125);
 });
 
-test("a rejoined player is immediately before the open-card player", () => {
+test("a rejoined player is dealt last without changing the current distribution", () => {
   const table = [
     { id: "a", name: "Ari", seat: 1, total: 30, eliminated: false },
     { id: "b", name: "Bea", seat: 2, total: 40, eliminated: false },
@@ -80,10 +80,28 @@ test("a rejoined player is immediately before the open-card player", () => {
   ];
 
   const rejoinedPlayers = rejoinPlayerAtScore(table, "c", 51, "round-4", "b");
-  assert.deepEqual(rejoinedPlayers.filter((player) => !player.eliminated).sort((left, right) => left.seat - right.seat).map((player) => player.id), ["a", "c", "b", "d"]);
-  assert.equal(getCardDistributorPlayerId(rejoinedPlayers, "b"), "c");
+  assert.deepEqual(rejoinedPlayers.filter((player) => !player.eliminated).sort((left, right) => left.seat - right.seat).map((player) => player.id), ["c", "a", "b", "d"]);
+  assert.equal(getCardDistributorPlayerId(rejoinedPlayers, "b"), "a");
   assert.equal(getCurrentDealerPlayerId(rejoinedPlayers, "b", "a"), "a");
   assert.equal(getCurrentDealerPlayerId(rejoinedPlayers, "d", null), "b");
+});
+
+test("two rejoined players fill the final deal positions without changing the distributor", () => {
+  const table = [
+    { id: "a", name: "Ari", seat: 1, total: 30, eliminated: false },
+    { id: "b", name: "Bea", seat: 2, total: 40, eliminated: false },
+    { id: "c", name: "Cyd", seat: 3, total: 200, eliminated: true },
+    { id: "d", name: "Dev", seat: 4, total: 200, eliminated: true },
+    { id: "e", name: "Eli", seat: 5, total: 50, eliminated: false },
+  ];
+
+  const firstRejoin = rejoinPlayerAtScore(table, "c", 51, "round-4", "b");
+  const secondRejoin = rejoinPlayerAtScore(firstRejoin, "d", 52, "round-4", "b");
+  const activeOrder = secondRejoin.filter((player) => !player.eliminated).sort((left, right) => left.seat - right.seat).map((player) => player.id);
+
+  assert.deepEqual(activeOrder, ["c", "d", "a", "b", "e"]);
+  assert.equal(getCardDistributorPlayerId(secondRejoin, "b"), "a");
+  assert.equal(getCurrentDealerPlayerId(secondRejoin, "b", "a"), "a");
 });
 
 test("only a player eliminated in the latest round can rejoin", () => {

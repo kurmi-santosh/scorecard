@@ -60,7 +60,7 @@ export const getRemainingTableStatus = (score: number, rules: Rules) => {
 };
 
 export const roundChoiceLabel = (kind: Exclude<ScoreKind, "manual">) => ({
-  winner: "Win",
+  winner: "Show",
   firstDrop: "Drop",
   middleDrop: "Mid",
   full: "Full",
