@@ -24,7 +24,7 @@ export function PlayerCard({ player, rules, isLowestScore, isOpenCardPlayer, isD
           <View style={styles.playerNameRow}>
             <Text style={styles.playerName}>{player.name}</Text>
             {isDistributor && <Text style={styles.distributorStar} accessibilityLabel="Card distributor">★</Text>}
-            {isOpenCardPlayer && <View style={styles.openCardCue} accessible accessibilityLabel="Take the open card"><View style={styles.openCardIcon}><Text style={styles.openCardDiamond}>♦</Text></View><Text style={styles.openCardLabel}>Open card</Text></View>}
+            {isOpenCardPlayer && <View style={styles.openCardCue} accessible accessibilityLabel="Take the open card"><View style={styles.openCardIcon}><Text style={styles.openCardDiamond}>♦</Text></View></View>}
             {showRemainingStatus && <Text style={[styles.remainingStatus, { color: scoreTone.accent }]}>{remainingDrops} drops · {safePointsRemaining} left</Text>}
           </View>
         </View>
